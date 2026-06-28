@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONFLUENCE — AI-Filtered SMC Trading Engine for MT5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0A0C10;
+    --surface:#11151B;
+    --surface-2:#161B23;
+    --surface-3:#1C222C;
+    --line:#232A35;
+    --line-soft:#1A2029;
+    --text:#E7EAEF;
+    --text-dim:#8A93A3;
+    --text-faint:#5A6275;
+    --buy:#22D6A4;
+    --buy-dim:#163A30;
+    --sell:#FF5D6C;
+    --sell-dim:#3A1A1E;
+    --gold:#E8B25C;
+    --gold-dim:#3A2C16;
+    --blue:#5B9FE8;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--void);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit; text-decoration:none;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 32px;}
+  ::selection{background:var(--buy); color:#06140F;}
+
+  /* ---------- background texture ---------- */
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:64px 64px;
+    opacity:0.35;
+    mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  }
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(10,12,16,0.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .inner{
+    display:flex; align-items:center; justify-content:space-between;
+    height:64px;
+  }
+  .logo{
+    font-family:var(--font-display); font-weight:700; font-size:18px;
+    letter-spacing:0.02em; display:flex; align-items:center; gap:10px;
+  }
+  .logo .dot{
+    width:8px; height:8px; border-radius:50%; background:var(--buy);
+    box-shadow:0 0 0 3px var(--buy-dim);
+  }
+  .nav-links{display:flex; gap:36px; font-size:14px; color:var(--text-dim);}
+  .nav-links a{transition:color 0.2s;}
+  .nav-links a:hover{color:var(--text);}
+  .nav-cta{
+    font-family:var(--font-mono); font-size:13px; padding:9px 18px;
+    border:1px solid var(--line); border-radius:6px; color:var(--text);
+    transition:border-color 0.2s, background 0.2s;
+  }
+  .nav-cta:hover{border-color:var(--buy); background:var(--buy-dim);}
+  @media (max-width:860px){ .nav-links{display:none;} }
+
+  /* ---------- hero ---------- */
+  header.hero{position:relative; z-index:1; padding:96px 0 64px;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:64px; align-items:center;}
+  @media (max-width:980px){ .hero-grid{grid-template-columns:1fr;} }
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:12.5px; color:var(--buy);
+    letter-spacing:0.12em; text-transform:uppercase; display:flex; align-items:center; gap:10px;
+    margin-bottom:22px;
+  }
+  .eyebrow::before{content:''; width:18px; height:1px; background:var(--buy);}
+
+  h1.hero-title{
+    font-family:var(--font-display); font-weight:600; font-size:54px;
+    line-height:1.08; letter-spacing:-0.01em; margin-bottom:22px;
+  }
+  h1.hero-title em{
+    font-style:normal; color:var(--buy);
+  }
+  @media (max-width:980px){ h1.hero-title{font-size:38px;} }
+
+  .hero-sub{
+    font-size:17px; color:var(--text-dim); max-width:520px; margin-bottom:34px;
+  }
+  .hero-sub strong{color:var(--text); font-weight:500;}
+
+  .hero-ctas{display:flex; gap:14px; margin-bottom:48px; flex-wrap:wrap;}
+  .btn{
+    font-family:var(--font-body); font-weight:500; font-size:14.5px;
+    padding:13px 24px; border-radius:7px; display:inline-flex; align-items:center; gap:8px;
+    transition:transform 0.15s, background 0.2s, border-color 0.2s;
+  }
+  .btn-primary{background:var(--buy); color:#06140F;}
+  .btn-primary:hover{transform:translateY(-1px); background:#33E2B2;}
+  .btn-ghost{border:1px solid var(--line); color:var(--text);}
+  .btn-ghost:hover{border-color:var(--text-faint); background:var(--surface);}
+
+  .hero-stats{display:flex; gap:36px; flex-wrap:wrap;}
+  .hstat{}
+  .hstat .v{font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--text);}
+  .hstat .l{font-size:12.5px; color:var(--text-faint); margin-top:4px;}
+
+  /* ---------- hero panel (signature element) ---------- */
+  .term-panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .term-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid var(--line); background:var(--surface-2);
+  }
+  .term-head .l{font-family:var(--font-mono); font-size:12px; color:var(--text-dim);}
+  .term-dots{display:flex; gap:6px;}
+  .term-dots span{width:8px; height:8px; border-radius:50%; background:var(--line);}
+  .term-body{padding:22px 22px 8px;}
+
+  .score-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .score-row .label{font-size:13px; color:var(--text-dim);}
+  .score-row .sym{font-family:var(--font-mono); font-size:14px; color:var(--text);}
+
+  .gate{
+    display:flex; align-items:center; gap:18px; margin-bottom:24px;
+    padding:16px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px;
+  }
+  .gate-ring{position:relative; width:84px; height:84px; flex:none;}
+  .gate-ring canvas{position:absolute; inset:0;}
+  .gate-ring .num{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column;
+  }
+  .gate-ring .num b{font-family:var(--font-mono); font-size:22px; font-weight:600;}
+  .gate-ring .num span{font-size:9.5px; color:var(--text-faint); letter-spacing:0.05em;}
+  .gate-info b{font-size:14px; font-weight:500; display:block; margin-bottom:3px;}
+  .gate-info span{font-size:12.5px; color:var(--text-dim);}
+  .gate-info .pass{color:var(--buy); font-family:var(--font-mono); font-size:12px;}
+
+  .factor{margin-bottom:13px;}
+  .factor-top{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;}
+  .factor-top .name{color:var(--text-dim);}
+  .factor-top .val{font-family:var(--font-mono); color:var(--text);}
+  .factor-bar{height:5px; background:var(--surface-3); border-radius:3px; overflow:hidden;}
+  .factor-fill{height:100%; border-radius:3px; background:var(--buy); width:0%; transition:width 1.4s cubic-bezier(.2,.8,.2,1);}
+
+  .term-foot{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; border-top:1px solid var(--line); background:var(--surface-2);
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-faint);
+  }
+  .blink{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--buy); margin-right:6px; animation:blink 1.6s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+  /* ---------- section shared ---------- */
+  section{position:relative; z-index:1; padding:96px 0;}
+  .section-head{max-width:640px; margin-bottom:56px;}
+  .kicker{
+    font-family:var(--font-mono); font-size:12px; color:var(--text-faint);
+    letter-spacing:0.12em; text-transform:uppercase; margin-bottom:14px;
+  }
+  h2{font-family:var(--font-display); font-weight:600; font-size:34px; letter-spacing:-0.01em; margin-bottom:14px;}
+  .section-head p{color:var(--text-dim); font-size:15.5px;}
+  .divider{height:1px; background:var(--line); border:none;}
+
+  /* ---------- pyramid (timeframes) ---------- */
+  .pyramid{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .pyr-cell{background:var(--surface); padding:26px 22px; position:relative;}
+  .pyr-cell .tf{font-family:var(--font-mono); font-size:26px; font-weight:600; color:var(--buy); margin-bottom:10px;}
+  .pyr-cell .role{font-size:13px; font-weight:500; margin-bottom:6px;}
+  .pyr-cell .desc{font-size:12.5px; color:var(--text-faint); line-height:1.55;}
+  .pyr-cell .idx{position:absolute; top:18px; right:20px; font-family:var(--font-mono); font-size:11px; color:var(--text-faint);}
+  @media (max-width:860px){ .pyramid{grid-template-columns:1fr 1fr;} }
+
+  /* ---------- rules grid ---------- */
+  .rules-grid{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  @media (max-width:860px){ .rules-grid{grid-template-columns:1fr;} }
+  .rule-col{background:var(--surface); padding:30px 30px;}
+  .rule-col-head{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  .rule-tag{font-family:var(--font-mono); font-size:12px; padding:4px 10px; border-radius:5px; font-weight:600;}
+  .rule-tag.buy{background:var(--buy-dim); color:var(--buy);}
+  .rule-tag.sell{background:var(--sell-dim); color:var(--sell);}
+  .rule-list{list-style:none;}
+  .rule-list li{
+    font-size:13.5px; color:var(--text-dim); padding:9px 0; border-top:1px solid var(--line-soft);
+    display:flex; gap:10px;
+  }
+  .rule-list li:first-child{border-top:none;}
+  .rule-list li .chk{font-family:var(--font-mono); font-size:12px; flex:none; padding-top:1px;}
+  .rule-col.buy .chk{color:var(--buy);}
+  .rule-col.sell .chk{color:var(--sell);}
+  .rule-list li b{color:var(--text); font-weight:500;}
+
+  /* ---------- SMC concepts ---------- */
+  .smc-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  @media (max-width:860px){ .smc-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .smc-grid{grid-template-columns:1fr;} }
+  .smc-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:24px;
+    transition:border-color 0.2s, transform 0.2s;
+  }
+  .smc-card:hover{border-color:var(--text-faint); transform:translateY(-2px);}
+  .smc-card .ico{
+    width:34px; height:34px; border-radius:8px; background:var(--surface-3);
+    display:flex; align-items:center; justify-content:center; margin-bottom:16px;
+    font-family:var(--font-mono); font-size:13px; color:var(--gold);
+  }
+  .smc-card h4{font-size:15px; font-weight:500; margin-bottom:8px;}
+  .smc-card p{font-size:13px; color:var(--text-faint); line-height:1.6;}
+
+  /* ---------- risk console ---------- */
+  .risk-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  @media (max-width:980px){ .risk-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .risk-grid{grid-template-columns:1fr;} }
+  .risk-card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:22px;}
+  .risk-card .v{font-family:var(--font-mono); font-size:26px; font-weight:600; color:var(--text); margin-bottom:6px;}
+  .risk-card .l{font-size:12.5px; color:var(--text-faint);}
+  .risk-card.warn .v{color:var(--gold);}
+  .risk-card.crit .v{color:var(--sell);}
+
+  /* ---------- dashboard mock ---------- */
+  .dash{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  }
+  .dash-top{display:grid; grid-template-columns:repeat(5,1fr); border-bottom:1px solid var(--line);}
+  .dash-stat{padding:20px 22px; border-right:1px solid var(--line);}
+  .dash-stat:last-child{border-right:none;}
+  .dash-stat .l{font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;}
+  .dash-stat .v{font-family:var(--font-mono); font-size:19px; font-weight:600;}
+  .dash-stat .v.pos{color:var(--buy);}
+  .dash-stat .v.neg{color:var(--sell);}
+  @media (max-width:860px){ .dash-top{grid-template-columns:repeat(2,1fr);} .dash-stat{border-bottom:1px solid var(--line);} }
+
+  table.pos-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.pos-table th{
+    text-align:left; padding:14px 22px; font-size:11px; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--line); font-weight:500;
+  }
+  table.pos-table td{padding:14px 22px; border-bottom:1px solid var(--line-soft); font-family:var(--font-mono); color:var(--text-dim);}
+  table.pos-table td.sym{font-family:var(--font-body); color:var(--text); font-weight:500;}
+  .pill{font-family:var(--font-mono); font-size:11px; padding:3px 9px; border-radius:4px; font-weight:600;}
+  .pill.buy{background:var(--buy-dim); color:var(--buy);}
+  .pill.sell{background:var(--sell-dim); color:var(--sell);}
+  td.pl.pos{color:var(--buy);}
+  td.pl.neg{color:var(--sell);}
+
+  /* ---------- architecture ---------- */
+  .arch-wrap{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:28px 32px;
+    font-family:var(--font-mono); font-size:13px; line-height:1.9; color:var(--text-dim);
+    overflow-x:auto;
+  }
+  .arch-wrap .dir{color:var(--blue);}
+  .arch-wrap .file{color:var(--text);}
+  .arch-wrap .cmt{color:var(--text-faint);}
+
+  /* ---------- setup steps ---------- */
+  .steps{display:flex; flex-direction:column;}
+  .step{
+    display:grid; grid-template-columns:64px 1fr; gap:24px; padding:28px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .step:last-child{border-bottom:none;}
+  .step .n{font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--text-faint);}
+  .step h4{font-size:16px; font-weight:500; margin-bottom:6px;}
+  .step p{font-size:13.5px; color:var(--text-dim); max-width:640px;}
+  .step code{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px;
+    padding:2px 7px; font-family:var(--font-mono); font-size:12.5px; color:var(--gold);
+  }
+
+  /* ---------- callout ---------- */
+  .callout{
+    background:var(--gold-dim); border:1px solid #4A3A1F; border-radius:10px;
+    padding:22px 26px; display:flex; gap:16px; align-items:flex-start;
+  }
+  .callout .mark{font-family:var(--font-mono); font-weight:700; color:var(--gold); font-size:14px;}
+  .callout p{font-size:13.5px; color:#D8C39C; line-height:1.65;}
+  .callout p strong{color:var(--gold);}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line); padding:56px 0 40px; position:relative; z-index:1;}
+  .foot-grid{display:flex; justify-content:space-between; gap:40px; flex-wrap:wrap; margin-bottom:36px;}
+  .foot-col h5{font-size:12.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;}
+  .foot-col a{display:block; font-size:13.5px; color:var(--text-dim); margin-bottom:10px; transition:color 0.2s;}
+  .foot-col a:hover{color:var(--text);}
+  .foot-bottom{display:flex; justify-content:space-between; align-items:center; padding-top:28px; border-top:1px solid var(--line); flex-wrap:wrap; gap:14px;}
+  .foot-bottom p{font-size:12px; color:var(--text-faint);}
+
+  .reveal{opacity:0; transform:translateY(16px); transition:opacity 0.6s ease, transform 0.6s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1; transform:none; transition:none;}
+    .factor-fill{transition:none;}
+    .blink{animation:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<nav>
+  <div class="wrap inner">
+    <div class="logo"><span class="dot"></span>CONFLUENCE</div>
+    <div class="nav-links">
+      <a href="#strategy">Strategy</a>
+      <a href="#smc">Smart money</a>
+      <a href="#risk">Risk engine</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#setup">Setup</a>
+    </div>
+    <a href="#setup" class="nav-cta">View on disk →</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">MetaTrader 5 · Python · Multi-timeframe SMC</div>
+      <h1 class="hero-title">Trade the structure,<br>not the <em>noise</em>.</h1>
+      <p class="hero-sub">An algorithmic trading engine for MT5 that only fires when trend, momentum, volume, market structure, and volatility <strong>all agree</strong> — scored transparently, gated at <strong>80/100</strong>, and sized to risk exactly 1% per idea.</p>
+      <div class="hero-ctas">
+        <a href="#setup" class="btn btn-primary">Run a backtest →</a>
+        <a href="#strategy" class="btn btn-ghost">See the rules</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="v">7</div><div class="l">FX majors covered</div></div>
+        <div class="hstat"><div class="v">4</div><div class="l">Timeframes fused</div></div>
+        <div class="hstat"><div class="v">1:2</div><div class="l">Minimum reward:risk</div></div>
+        <div class="hstat"><div class="v">80</div><div class="l">Score floor to fire</div></div>
+      </div>
+    </div>
+
+    <div class="term-panel">
+      <div class="term-head">
+        <div class="l">confluence_score.py — EURUSD</div>
+        <div class="term-dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="term-body">
+        <div class="score-row">
+          <span class="sym">EUR/USD · M15</span>
+          <span class="label">long setup</span>
+        </div>
+
+        <div class="gate">
+          <div class="gate-ring">
+            <canvas id="gateRing" width="84" height="84"></canvas>
+            <div class="num"><b id="gateNum">0</b><span>/ 100</span></div>
+          </div>
+          <div class="gate-info">
+            <b>Confluence gate</b>
+            <span>Minimum 80 required to execute</span>
+            <div class="pass" id="gatePass">EVALUATING…</div>
+          </div>
+        </div>
+
+        <div class="factor" data-target="18"><div class="factor-top"><span class="name">Trend (H4 / H1 EMA stack)</span><span class="val">0/20</span></div><div class="factor-bar"><div class="factor-fill"></div></div></div>
+        <div class="factor" data-target="16"><div class="factor-top"><span class="name">Momentum (RSI 14)</span><span class="val">0/20</span></div><div class="factor-bar"><div class="factor-fill"></div></div></div>
+        <div class="factor" data-target="17"><div class="factor-top"><span class="name">Volume confirmation</span><span class="val">0/20</span></div><div class="factor-bar"><div class="factor-fill"></div></div></div>
+        <div class="factor" data-target="19"><div class="factor-top"><span class="name">Structure (BOS + order block)</span><span class="val">0/20</span></div><div class="factor-bar"><div class="factor-fill"></div></div></div>
+        <div class="factor" data-target="17"><div class="factor-top"><span class="name">Volatility (ATR regime)</span><span class="val">0/20</span></div><div class="factor-bar"><div class="factor-fill"></div></div></div>
+      </div>
+      <div class="term-foot">
+        <span><span class="blink"></span>session: London/NY · news clear · spread 0.8p</span>
+        <span>mode: paper</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="strategy">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">01 — Multi-timeframe stack</div>
+      <h2>Four timeframes, one decision.</h2>
+      <p>Bias is set on the higher timeframes, confirmed on the lower ones. No single chart gets a vote on its own — direction must agree from H4 down to the candle that actually triggers the order.</p>
+    </div>
+
+    <div class="pyramid reveal">
+      <div class="pyr-cell"><span class="idx">01</span><div class="tf">H4</div><div class="role">Macro trend</div><div class="desc">EMA50 vs EMA200 establishes the dominant directional bias for the pair.</div></div>
+      <div class="pyr-cell"><span class="idx">02</span><div class="tf">H1</div><div class="role">Trend agreement</div><div class="desc">Must confirm the same bias as H4 — disagreement cancels the setup outright.</div></div>
+      <div class="pyr-cell"><span class="idx">03</span><div class="tf">M15</div><div class="role">Entry confirmation</div><div class="desc">RSI, volume, BOS, and support/resistance retest are all evaluated here.</div></div>
+      <div class="pyr-cell"><span class="idx">04</span><div class="tf">M5</div><div class="role">Precision entry</div><div class="desc">Final confirmation candle determines the exact bar the order is placed on.</div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider wrap">
+
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">02 — Entry rules</div>
+      <h2>Every condition, both directions.</h2>
+      <p>The buy and sell logic are exact mirrors of each other — no asymmetric shortcuts, no exceptions.</p>
+    </div>
+
+    <div class="rules-grid reveal">
+      <div class="rule-col buy">
+        <div class="rule-col-head"><span class="rule-tag buy">BUY</span><span style="font-size:13px;color:var(--text-faint);">long bias</span></div>
+        <ul class="rule-list">
+          <li><span class="chk">✓</span><span>EMA50 sits <b>above</b> EMA200 on H4 and H1</span></li>
+          <li><span class="chk">✓</span><span>Price trades <b>above</b> both EMAs</span></li>
+          <li><span class="chk">✓</span><span>RSI(14) reads between <b>50 and 70</b></span></li>
+          <li><span class="chk">✓</span><span>Bullish <b>break of structure</b> confirmed</span></li>
+          <li><span class="chk">✓</span><span>Current volume <b>above</b> rolling average</span></li>
+          <li><span class="chk">✓</span><span>Price retests a detected <b>support zone</b></span></li>
+          <li><span class="chk">✓</span><span>Bullish <b>confirmation candle</b> on M5</span></li>
+        </ul>
+      </div>
+      <div class="rule-col sell">
+        <div class="rule-col-head"><span class="rule-tag sell">SELL</span><span style="font-size:13px;color:var(--text-faint);">short bias</span></div>
+        <ul class="rule-list">
+          <li><span class="chk">✓</span><span>EMA50 sits <b>below</b> EMA200 on H4 and H1</span></li>
+          <li><span class="chk">✓</span><span>Price trades <b>below</b> both EMAs</span></li>
+          <li><span class="chk">✓</span><span>RSI(14) reads between <b>30 and 50</b></span></li>
+          <li><span class="chk">✓</span><span>Bearish <b>break of structure</b> confirmed</span></li>
+          <li><span class="chk">✓</span><span>Current volume <b>above</b> rolling average</span></li>
+          <li><span class="chk">✓</span><span>Price retests a detected <b>resistance zone</b></span></li>
+          <li><span class="chk">✓</span><span>Bearish <b>confirmation candle</b> on M5</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="smc" style="background:var(--surface);">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">03 — Smart money concepts</div>
+      <h2>Reading where liquidity actually sits.</h2>
+      <p>Five structural detectors run on every confirmation-timeframe candle, feeding the structure score and gating entries to genuine institutional footprints rather than indicator crossovers alone.</p>
+    </div>
+
+    <div class="smc-grid reveal">
+      <div class="smc-card"><div class="ico">BOS</div><h4>Break of structure</h4><p>Price closes beyond the last significant swing point, confirming the prevailing trend is continuing.</p></div>
+      <div class="smc-card"><div class="ico">CHoCH</div><h4>Change of character</h4><p>The first break against the prevailing trend — an early reversal warning the scorer weighs against new entries.</p></div>
+      <div class="smc-card"><div class="ico">FVG</div><h4>Fair value gap</h4><p>Imbalanced candles leave a gap that price tends to revisit before continuing — mapped on every scan.</p></div>
+      <div class="smc-card"><div class="ico">OB</div><h4>Order blocks</h4><p>The last opposing candle before an impulsive move, marking where large positions were likely built.</p></div>
+      <div class="smc-card"><div class="ico">LQ</div><h4>Liquidity sweep</h4><p>A wick beyond a swing high or low that closes back inside range — the classic stop-hunt signature.</p></div>
+      <div class="smc-card"><div class="ico">S/R</div><h4>Support &amp; resistance</h4><p>Swing highs and lows are clustered into zones, weighted by how many times price has reacted there.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="risk">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">04 — Risk engine</div>
+      <h2>The limits that don't bend.</h2>
+      <p>Position size is derived, never guessed — every trade risks exactly the configured percentage, and account-level circuit breakers stop trading before a bad week becomes a bad quarter.</p>
+    </div>
+
+    <div class="risk-grid reveal">
+      <div class="risk-card"><div class="v">1.0%</div><div class="l">Risk per trade — dynamic lot sizing</div></div>
+      <div class="risk-card"><div class="v">1:2+</div><div class="l">Minimum reward:risk, enforced</div></div>
+      <div class="risk-card"><div class="v">ATR×1.5</div><div class="l">Stop-loss distance</div></div>
+      <div class="risk-card"><div class="v">ATR×3</div><div class="l">Take-profit distance</div></div>
+      <div class="risk-card warn"><div class="v">3.0%</div><div class="l">Daily loss limit — trading halts</div></div>
+      <div class="risk-card crit"><div class="v">8.0%</div><div class="l">Weekly loss limit — trading halts</div></div>
+      <div class="risk-card"><div class="v">3</div><div class="l">Max concurrent open trades</div></div>
+      <div class="risk-card"><div class="v">5.0%</div><div class="l">Max total account exposure</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--surface);">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">05 — Trade management</div>
+      <h2>What happens after the fill.</h2>
+    </div>
+    <div class="rules-grid reveal" style="grid-template-columns:1fr 1fr;">
+      <div class="rule-col">
+        <div class="rule-col-head"><span class="rule-tag" style="background:var(--surface-3); color:var(--text);">BREAKEVEN</span></div>
+        <ul class="rule-list"><li><span class="chk" style="color:var(--text-dim);">→</span><span>Stop moves to entry once the trade reaches <b>+1.5R</b> — the position can no longer lose money.</span></li></ul>
+      </div>
+      <div class="rule-col">
+        <div class="rule-col-head"><span class="rule-tag" style="background:var(--surface-3); color:var(--text);">TRAILING</span></div>
+        <ul class="rule-list"><li><span class="chk" style="color:var(--text-dim);">→</span><span>Activates at <b>+1R</b>, then trails by a multiple of current ATR — giving winners room without giving back gains.</span></li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">06 — Live console</div>
+      <h2>One screen, the whole account.</h2>
+      <p>A terminal dashboard refreshes every few seconds with balance, equity, exposure, and every open position — built for an unattended VPS, not a trading floor.</p>
+    </div>
+
+    <div class="dash reveal">
+      <div class="dash-top">
+        <div class="dash-stat"><div class="l">Balance</div><div class="v">$24,180.40</div></div>
+        <div class="dash-stat"><div class="l">Equity</div><div class="v pos">$24,612.90</div></div>
+        <div class="dash-stat"><div class="l">Daily P/L</div><div class="v pos">+$432.50</div></div>
+        <div class="dash-stat"><div class="l">Weekly P/L</div><div class="v neg">−$118.20</div></div>
+        <div class="dash-stat"><div class="l">Win rate (30d)</div><div class="v">58.3%</div></div>
+      </div>
+      <table class="pos-table">
+        <thead><tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Stop</th><th>Target</th><th>Score</th><th>P/L</th></tr></thead>
+        <tbody>
+          <tr><td class="sym">EURUSD</td><td><span class="pill buy">BUY</span></td><td>0.34</td><td>1.08420</td><td>1.08190</td><td>1.08880</td><td>87</td><td class="pl pos">+$94.20</td></tr>
+          <tr><td class="sym">GBPUSD</td><td><span class="pill sell">SELL</span></td><td>0.22</td><td>1.26310</td><td>1.26580</td><td>1.25770</td><td>82</td><td class="pl neg">−$31.40</td></tr>
+          <tr><td class="sym">USDJPY</td><td><span class="pill buy">BUY</span></td><td>0.41</td><td>156.220</td><td>155.840</td><td>156.980</td><td>91</td><td class="pl pos">+$58.70</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--surface);">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">07 — Validation</div>
+      <h2>Backtest, then Monte Carlo, then walk-forward.</h2>
+      <p>One historical run tells you almost nothing on its own. The engine reports the standard set, then reshuffles trade order across thousands of runs to show a range of plausible outcomes — not a single flattering curve.</p>
+    </div>
+    <div class="risk-grid reveal">
+      <div class="risk-card"><div class="v">Win rate</div><div class="l">Share of closed trades that were profitable</div></div>
+      <div class="risk-card"><div class="v">Profit factor</div><div class="l">Gross profit ÷ gross loss</div></div>
+      <div class="risk-card"><div class="v">Max drawdown</div><div class="l">Largest peak-to-trough equity decline</div></div>
+      <div class="risk-card"><div class="v">Sharpe ratio</div><div class="l">Return per unit of volatility, annualized</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">08 — Project layout</div>
+      <h2>Modular by design.</h2>
+      <p>Strategy, risk, execution, and backtesting are separate, independently testable modules — swap a broker, a scoring weight, or a timeframe without touching the rest.</p>
+    </div>
+    <div class="arch-wrap reveal">
+<span class="dir">forex_bot/</span>
+├── main.py                <span class="cmt"># entry point — backtest / paper / live</span>
+├── <span class="dir">config/</span>config.yaml      <span class="cmt"># every setting lives here</span>
+├── <span class="dir">core/</span>
+│   ├── <span class="file">strategy.py</span>          <span class="cmt"># multi-timeframe decision engine</span>
+│   ├── <span class="file">scoring.py</span>           <span class="cmt"># the 5-factor confluence gate</span>
+│   ├── <span class="file">smc.py</span>               <span class="cmt"># BOS / CHoCH / FVG / order blocks</span>
+│   ├── <span class="file">risk_manager.py</span>      <span class="cmt"># sizing, SL/TP, trailing, breakeven</span>
+│   ├── <span class="file">mt5_connector.py</span>     <span class="cmt"># live broker bridge + reconnection</span>
+│   └── <span class="file">paper_broker.py</span>      <span class="cmt"># simulated fills for paper mode</span>
+├── <span class="dir">backtest/</span>backtester.py, optimizer.py
+├── <span class="dir">dashboard/</span>dashboard.py
+└── <span class="dir">tests/</span>                    <span class="cmt"># 24 unit tests, all green</span>
+    </div>
+  </div>
+</section>
+
+<section id="setup" style="background:var(--surface);">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">09 — Get running</div>
+      <h2>Backtest first. Always.</h2>
+    </div>
+
+    <div class="steps reveal">
+      <div class="step"><div class="n">01</div><div><h4>Install dependencies</h4><p>Create a virtual environment and run <code>pip install -r requirements.txt</code>. MetaTrader5 itself is Windows-only — backtesting works anywhere.</p></div></div>
+      <div class="step"><div class="n">02</div><div><h4>Configure</h4><p>Open <code>config/config.yaml</code> and set your broker login, symbols, and risk limits. Nothing else needs editing.</p></div></div>
+      <div class="step"><div class="n">03</div><div><h4>Backtest</h4><p>Run <code>python main.py --mode backtest</code> against historical data and review win rate, drawdown, and the Monte Carlo spread.</p></div></div>
+      <div class="step"><div class="n">04</div><div><h4>Paper trade</h4><p>Switch to <code>--mode paper</code> and let it run against live prices with simulated fills for at least several weeks.</p></div></div>
+      <div class="step"><div class="n">05</div><div><h4>Go live, deliberately</h4><p>Only once paper results hold up, point <code>--mode live</code> at a demo server first, then a funded account — on a Windows VPS running as a service.</p></div></div>
+    </div>
+
+    <div class="callout reveal" style="margin-top:36px;">
+      <span class="mark">!</span>
+      <p><strong>This is engineering, not a profit guarantee.</strong> Every rule here is real and tested — but markets change, and no backtest substitutes for your own paper-trading review on your own broker before risking capital.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h5>Engine</h5>
+        <a href="#strategy">Strategy logic</a>
+        <a href="#smc">Smart money concepts</a>
+        <a href="#risk">Risk engine</a>
+      </div>
+      <div class="foot-col">
+        <h5>Operate</h5>
+        <a href="#dashboard">Live dashboard</a>
+        <a href="#setup">Setup guide</a>
+      </div>
+      <div class="foot-col">
+        <h5>Stack</h5>
+        <a href="#">Python 3.12</a>
+        <a href="#">MetaTrader 5</a>
+        <a href="#">pandas / numpy</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <p>Built for any MT5 broker. Paper trade before you live trade.</p>
+      <p>CONFLUENCE — multi-timeframe SMC trading engine</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // reveal-on-scroll
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:0.12});
+  revealEls.forEach(el=>io.observe(el));
+
+  // confluence factor bars + gate ring animation
+  function animateScorecard(){
+    const factors = document.querySelectorAll('.factor');
+    let total = 0;
+    factors.forEach((f, i)=>{
+      const target = parseInt(f.dataset.target, 10);
+      total += target;
+      const fill = f.querySelector('.factor-fill');
+      const val = f.querySelector('.val');
+      setTimeout(()=>{
+        fill.style.width = (target/20*100)+'%';
+        let cur = 0;
+        const step = setInterval(()=>{
+          cur++;
+          val.textContent = cur+'/20';
+          if(cur>=target) clearInterval(step);
+        }, 1400/target);
+      }, i*120);
+    });
+
+    const ringCanvas = document.getElementById('gateRing');
+    const ctx = ringCanvas.getContext('2d');
+    const gateNum = document.getElementById('gateNum');
+    const gatePass = document.getElementById('gatePass');
+    const r = 36, cx = 42, cy = 42;
+    let shown = 0;
+    const duration = 1500;
+    const startTime = performance.now() + 200;
+
+    function draw(now){
+      const t = Math.max(0, Math.min(1, (now-startTime)/duration));
+      const eased = 1 - Math.pow(1-t, 3);
+      shown = Math.round(eased*total);
+      ctx.clearRect(0,0,84,84);
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.strokeStyle = '#1C222C';
+      ctx.lineWidth = 7;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,-Math.PI/2, -Math.PI/2 + (Math.PI*2*(shown/100)));
+      ctx.strokeStyle = shown>=80 ? '#22D6A4' : '#E8B25C';
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      gateNum.textContent = shown;
+      if(t<1){ requestAnimationFrame(draw); }
+      else {
+        gatePass.textContent = shown>=80 ? 'PASSED — ORDER QUEUED' : 'BELOW THRESHOLD';
+        gatePass.style.color = shown>=80 ? '#22D6A4' : '#FF5D6C';
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  const heroObs = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ animateScorecard(); heroObs.disconnect(); }
+    });
+  }, {threshold:0.3});
+  heroObs.observe(document.querySelector('.term-panel'));
+</script>
+
+</body>
+</html>
